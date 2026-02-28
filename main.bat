@@ -1,7 +1,7 @@
 @echo off
 set CFLAGS=^
 -Wall -Wextra ^
--Og -ggdb3
+-Og -ggdb3 -std=c23
 
 set linking=
 
