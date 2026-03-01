@@ -5,13 +5,86 @@
 #define STR_(x) #x
 #define STR(x) STR_(x)
 
-#define SUDOKU_ROW_SIZE 9
-#define SUDOKU_COL_SIZE 9
+#define ROW 9
+#define COL 9
 
 typedef struct Sudoku_Board
 {
-    uint8_t cells[SUDOKU_ROW_SIZE * SUDOKU_COL_SIZE];
+    uint8_t cells[ROW * COL];
 } Sudoku_Board;
+
+typedef struct Digits
+{
+    uint8_t digits[10]; // cute hash table
+} Digits;
+
+#define IDX(x, y, thing) (thing)[((y)*(COL)) + (x)]
+
+Digits check_all_rules_for_xy(uint8_t x_input, uint8_t y_input, Sudoku_Board board)
+{
+    Digits dig = {0};
+    // 0 initialized means every number is possible
+    // if Nth IDX == 1, it means digit N isn't possible
+
+    dig.digits[0] = 1; // 0 is used to indicate empty cell, so not a valid possibility
+
+    // TODO: these can be merged
+    for (int y = 0; y < ROW; ++y)
+    {
+        dig.digits[IDX(x_input, y, board.cells)] = 1;
+    }
+    // TODO: these can be merged
+    for (int x = 0; x < COL; ++x)
+    {
+       dig.digits[IDX(x, y_input, board.cells)] = 1;
+    }
+
+    uint8_t topleftofsubsquare_x = (x_input / 3) * 3;
+    uint8_t topleftofsubsquare_y = (y_input / 3) * 3;
+
+    for (int y = topleftofsubsquare_y; y < (topleftofsubsquare_y + 3); ++y)
+    {
+        for (int x = topleftofsubsquare_x; x < (topleftofsubsquare_x + 3); ++x)
+        {
+            dig.digits[IDX(x, y, board.cells)] = 1;
+        }
+    }
+    return dig;
+}
+
+int get_digit_of_single_possibility(Digits dig)
+{
+    int count = 0;
+    int idx = 0;
+    for (int i = 0; i < 10; ++i)
+    {
+        if (dig.digits[i] == 0) {
+            ++count;
+            idx = i;
+        }
+    }
+    if (count <= 1) {return idx;}
+    else {return -1;}
+}
+
+void naive_update(Sudoku_Board *board)
+{
+    for (int y = 0; y < ROW; ++y)
+    {
+        for (int x = 0; x < COL; ++x)
+        {
+            if (IDX(x, y, board->cells) == 0)
+            {
+                Digits dig = check_all_rules_for_xy(x, y, *board);
+                int digit = get_digit_of_single_possibility(dig);
+                if (digit != -1)
+                {
+                    IDX(x, y, board->cells) = digit;
+                }
+            }
+        }
+    }
+}
 
 Sudoku_Board solve(Sudoku_Board board)
 {
@@ -21,11 +94,11 @@ Sudoku_Board solve(Sudoku_Board board)
 
 void print(Sudoku_Board board)
 {
-    for (int64_t y = 0; y < SUDOKU_ROW_SIZE; ++y)
+    for (int64_t y = 0; y < ROW; ++y)
     {
-        for (int64_t x = 0; x < SUDOKU_COL_SIZE; ++x)
+        for (int64_t x = 0; x < COL; ++x)
         {
-            printf("%u, ", board.cells[y * SUDOKU_ROW_SIZE + x]);
+            printf("%u, ", IDX(x, y, board.cells));
         }
         printf("\n");
     }
@@ -34,7 +107,7 @@ void print(Sudoku_Board board)
 
 bool boards_are_same(Sudoku_Board b1, Sudoku_Board b2)
 {
-    for (int64_t i = 0; i < (SUDOKU_COL_SIZE * SUDOKU_ROW_SIZE); ++i)
+    for (int64_t i = 0; i < (COL * ROW); ++i)
     {
         if (b1.cells[i] != b2.cells[i]) return false;
     }
@@ -66,8 +139,28 @@ int main(void)
                   0, 0, 8, 4, 0, 0, 3, 0, 6},
     };
     print(foo);
-    Sudoku_Board boo = solve(foo);
-    print(boo);
+
+    for (int y = 0; y < ROW; ++y)
+    {
+        for (int x = 0; x < COL; ++x)
+        {
+            if (IDX(x, y, foo.cells) == 0)
+            {
+/*                 naive_update(&foo); */
+
+                printf("possible digits for (x=%d, y=%d): ", x, y);
+                Digits dig = check_all_rules_for_xy(x, y, foo);
+                for (int i = 0; i < 10; ++i)
+                {
+                    if (dig.digits[i] == 0) {printf("%d ,", i);}
+                }
+                printf("\n");
+            }
+        }
+    }
+
+/*     Sudoku_Board boo = solve(foo);
+    print(boo); */
 
     // https://www.chiark.greenend.org.uk/~sgtatham/puzzles/js/solo.html#3x3%23951663241816686
     Sudoku_Board trivial = (Sudoku_Board){
